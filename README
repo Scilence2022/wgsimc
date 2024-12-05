@@ -5,7 +5,8 @@ Wgsim is a small tool for simulating sequence reads from a reference genome.
 It is able to simulate diploid genomes with SNPs and insertion/deletion (INDEL)
 polymorphisms, and simulate reads with uniform substitution sequencing errors.
 It does not generate INDEL sequencing errors, but this can be partly
-compensated by simulating INDEL polymorphisms.
+compensated by simulating INDEL polymorphisms. The tool can simulate reads 
+from both linear and circular genomes.
 
 Wgsim outputs the simulated polymorphisms, and writes the true read coordinates
 as well as the number of polymorphisms and sequencing errors in read names.
@@ -37,11 +38,13 @@ Simulation and evaluation
 
 The command line for simulation:
 
-  wgsim -Nxxx -1yyy -d0 -S11 -e0 -rzzz hs37m.fa yyy-zzz.fq /dev/null
+  wgsim [-c] -Nxxx -1yyy -d0 -S11 -e0 -rzzz hs37m.fa yyy-zzz.fq /dev/null
 
 where yyy is the read length, zzz is the error rate and $xxx * $yyy = 10000000.
 By default, 15% of polymorphisms are INDELs and their lengths are drawn from a
-geometric distribution with density 0.7*0.3^{l-1}.
+geometric distribution with density 0.7*0.3^{l-1}. Use -c option to simulate 
+reads from circular genomes, allowing reads to span across the sequence end 
+and beginning.
 
 The command line for evaluation:
 
@@ -90,4 +93,18 @@ Results
 4) Pash only gives 'unique mapping'. Its unique mapping is better than BWA-SW's
    Q1 mapiping. It is very slow, though, possibly because of suboptimal
    options.
+
+
+Circular Genome Mode
+------------------
+
+When simulating reads from circular genomes (e.g., bacterial chromosomes, 
+plasmids, mitochondrial DNA), use the -c option. In this mode:
+
+- Reads are allowed to wrap around from the end to the beginning of the sequence
+- The length restriction (sequence length > fragment size + 3 * std_dev) is ignored
+- Position generation and read extraction handle the circular nature of the sequence
+
+Example for circular genome:
+  wgsim -c -N1000000 -1100 -2100 circular.fa read1.fq read2.fq
 
