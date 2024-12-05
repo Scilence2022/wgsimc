@@ -392,10 +392,10 @@ void wgsim_core(FILE *fpout1, FILE *fpout2, const char *fn, int is_hap, int is_c
 static int simu_usage()
 {
 	fprintf(stderr, "\n");
-	fprintf(stderr, "Program: wgsim (short read simulator)\n");
+	fprintf(stderr, "Program: wgsimc (short read simulator for circular/linear genomes)\n");
 	fprintf(stderr, "Version: %s\n", PACKAGE_VERSION);
 	fprintf(stderr, "Contact: Heng Li <lh3@sanger.ac.uk>\n\n");
-	fprintf(stderr, "Usage:   wgsim [options] <in.ref.fa> <out.read1.fq> <out.read2.fq>\n\n");
+	fprintf(stderr, "Usage:   wgsimc [options] <in.ref.fa> <out.read1.fq> <out.read2.fq>\n\n");
 	fprintf(stderr, "Options: -e FLOAT      base error rate [%.3f]\n", ERR_RATE);
 	fprintf(stderr, "         -d INT        outer distance between the two ends [500]\n");
 	fprintf(stderr, "         -s INT        standard deviation [50]\n");
@@ -443,11 +443,11 @@ int main(int argc, char *argv[])
 	fpout1 = fopen(argv[optind+1], "w");
 	fpout2 = fopen(argv[optind+2], "w");
 	if (!fpout1 || !fpout2) {
-		fprintf(stderr, "[wgsim] file open error\n");
+		fprintf(stderr, "[wgsimc] file open error\n");
 		return 1;
 	}
 	if (seed <= 0) seed = time(0)&0x7fffffff;
-	fprintf(stderr, "[wgsim] seed = %d\n", seed);
+	fprintf(stderr, "[wgsimc] seed = %d\n", seed);
 	srand48(seed);
 
 	// Pass is_circ to wgsim_core
