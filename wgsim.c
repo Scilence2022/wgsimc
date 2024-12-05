@@ -226,7 +226,7 @@ void wgsim_print_mutref(const char *name, const kseq_t *ks, mutseq_t *hap1, muts
 	}
 }
 
-void wgsim_core(FILE *fpout1, FILE *fpout2, const char *fn, int is_hap, uint64_t N, int dist, int std_dev, int size_l, int size_r)
+void wgsim_core(FILE *fpout1, FILE *fpout2, const char *fn, int is_hap, int is_circ, uint64_t N, int dist, int std_dev, int size_l, int size_r)
 {
 	kseq_t *ks;
     mutseq_t rseq[2];
@@ -263,7 +263,7 @@ void wgsim_core(FILE *fpout1, FILE *fpout2, const char *fn, int is_hap, uint64_t
 	ks = kseq_init(fp_fa);
 	while ((l = kseq_read(ks)) >= 0) {
 		uint64_t n_pairs = (uint64_t)((long double)l / tot_len * N + 0.5);
-		if (l < dist + 3 * std_dev) {
+		if (!is_circ && l < dist + 3 * std_dev) {
 			fprintf(stderr, "[%s] skip sequence '%s' as it is shorter than %d!\n", __func__, ks->name.s, dist + 3 * std_dev);
 			continue;
 		}
@@ -278,13 +278,21 @@ void wgsim_core(FILE *fpout1, FILE *fpout2, const char *fn, int is_hap, uint64_t
 			int n_sub[2], n_indel[2], n_err[2], ext_coor[2], j, k;
 			FILE *fpo[2];
 
-			do { // avoid boundary failure
-				ran = ran_normal();
-				ran = ran * std_dev + dist;
-				d = (int)(ran + 0.5);
-				d = d > max_size? d : max_size;
-				pos = (int)((l - d + 1) * drand48());
-			} while (pos < 0 || pos >= ks->seq.l || pos + d - 1 >= ks->seq.l);
+			// Generate random fragment length
+			ran = ran_normal();
+			ran = ran * std_dev + dist;
+			d = (int)(ran + 0.5);
+			d = d > max_size ? d : max_size;
+
+			if (is_circ) {
+				// Generate random position allowing wrapping around
+				pos = (int)(ks->seq.l * drand48());
+			} else {
+				// Avoid boundary failure
+				do {
+					pos = (int)((l - d + 1) * drand48());
+				} while (pos < 0 || pos >= ks->seq.l || pos + d - 1 >= ks->seq.l);
+			}
 
 			// flip or not
 			if (drand48() < 0.5) {
@@ -301,10 +309,18 @@ void wgsim_core(FILE *fpout1, FILE *fpout2, const char *fn, int is_hap, uint64_t
 			n_sub[0] = n_sub[1] = n_indel[0] = n_indel[1] = n_err[0] = n_err[1] = 0;
 
 #define __gen_read(x, start, iter) do {									\
-				for (i = (start), k = 0, ext_coor[x] = -10; i >= 0 && i < ks->seq.l && k < s[x]; iter) {	\
-					int c = target[i], mut_type = c & mutmsk;			\
+				for (i = (start), k = 0, ext_coor[x] = -10; k < s[x]; ) {	\
+					if (is_circ) {											\
+						i = (i + ks->seq.l) % ks->seq.l;						\
+					} else {												\
+						if (i < 0 || i >= ks->seq.l) break;					\
+					}														\
+					int c = target[i], mut_type = c & mutmsk;				\
 					if (ext_coor[x] < 0) {								\
-						if (mut_type != NOCHANGE && mut_type != SUBSTITUTE) continue; \
+						if (mut_type != NOCHANGE && mut_type != SUBSTITUTE) {	\
+							iter;											\
+							continue;										\
+						}												\
 						ext_coor[x] = i;								\
 					}													\
 					if (mut_type == DELETE) ++n_indel[x];				\
@@ -318,7 +334,8 @@ void wgsim_core(FILE *fpout1, FILE *fpout2, const char *fn, int is_hap, uint64_t
 						for (n = mut_type>>12, ins = c>>4; n > 0 && k < s[x]; --n, ins >>= 2) \
 							tmp_seq[x][k++] = ins & 0x3;				\
 					}													\
-				}														\
+					iter;												\
+				}													\
 				if (k != s[x]) ext_coor[x] = -10;						\
 			} while (0)
 
@@ -389,8 +406,9 @@ static int simu_usage()
 	fprintf(stderr, "         -R FLOAT      fraction of indels [%.2f]\n", INDEL_FRAC);
 	fprintf(stderr, "         -X FLOAT      probability an indel is extended [%.2f]\n", INDEL_EXTEND);
 	fprintf(stderr, "         -S INT        seed for random generator [-1]\n");
-	fprintf(stderr, "         -A FLOAT      disgard if the fraction of ambiguous bases higher than FLOAT [%.2f]\n", MAX_N_RATIO);
+	fprintf(stderr, "         -A FLOAT      discard if fraction of ambiguous bases is higher than FLOAT [%.2f]\n", MAX_N_RATIO);
 	fprintf(stderr, "         -h            haplotype mode\n");
+	fprintf(stderr, "         -c            circular genome mode\n");
 	fprintf(stderr, "\n");
 	return 1;
 }
@@ -398,13 +416,13 @@ static int simu_usage()
 int main(int argc, char *argv[])
 {
 	int64_t N;
-	int dist, std_dev, c, size_l, size_r, is_hap = 0;
+	int dist, std_dev, c, size_l, size_r, is_hap = 0, is_circ = 0;
 	FILE *fpout1, *fpout2;
 	int seed = -1;
 
 	N = 1000000; dist = 500; std_dev = 50;
 	size_l = size_r = 70;
-	while ((c = getopt(argc, argv, "e:d:s:N:1:2:r:R:hX:S:A:")) >= 0) {
+	while ((c = getopt(argc, argv, "e:d:s:N:1:2:r:R:hX:S:A:c")) >= 0) {
 		switch (c) {
 		case 'd': dist = atoi(optarg); break;
 		case 's': std_dev = atoi(optarg); break;
@@ -418,6 +436,7 @@ int main(int argc, char *argv[])
 		case 'A': MAX_N_RATIO = atof(optarg); break;
 		case 'S': seed = atoi(optarg); break;
 		case 'h': is_hap = 1; break;
+		case 'c': is_circ = 1; break;
 		}
 	}
 	if (argc - optind < 3) return simu_usage();
@@ -430,7 +449,9 @@ int main(int argc, char *argv[])
 	if (seed <= 0) seed = time(0)&0x7fffffff;
 	fprintf(stderr, "[wgsim] seed = %d\n", seed);
 	srand48(seed);
-	wgsim_core(fpout1, fpout2, argv[optind], is_hap, N, dist, std_dev, size_l, size_r);
+
+	// Pass is_circ to wgsim_core
+	wgsim_core(fpout1, fpout2, argv[optind], is_hap, is_circ, N, dist, std_dev, size_l, size_r);
 
 	fclose(fpout1); fclose(fpout2);
 	return 0;
