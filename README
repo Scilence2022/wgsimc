@@ -95,7 +95,7 @@ Results
    options.
 
 
-Circular Genome Mode
+Circular Genome Mode by Lifu Song [songlf@tib.cas.cn]
 ------------------
 
 When simulating reads from circular genomes (e.g., bacterial chromosomes, 
