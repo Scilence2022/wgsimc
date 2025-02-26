@@ -2,6 +2,7 @@
 
    Copyright (c) 2008 Genome Research Ltd (GRL).
                  2011 Heng Li <lh3@live.co.uk>
+				 2025 Lifu Song <lifu.song@outlook.com>
 
    Permission is hereby granted, free of charge, to any person obtaining
    a copy of this software and associated documentation files (the
@@ -394,7 +395,7 @@ static int simu_usage()
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Program: wgsimc (short read simulator for circular/linear genomes)\n");
 	fprintf(stderr, "Version: %s\n", PACKAGE_VERSION);
-	fprintf(stderr, "Contact: Heng Li <lh3@sanger.ac.uk>\n\n");
+	fprintf(stderr, "Contact: Lifu Song <lifu.song@outlook.com>\n\n");
 	fprintf(stderr, "Usage:   wgsimc [options] <in.ref.fa> <out.read1.fq> <out.read2.fq>\n\n");
 	fprintf(stderr, "Options: -e FLOAT      base error rate [%.3f]\n", ERR_RATE);
 	fprintf(stderr, "         -d INT        outer distance between the two ends [500]\n");
