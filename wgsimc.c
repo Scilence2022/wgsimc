@@ -2,7 +2,7 @@
 
    Copyright (c) 2008 Genome Research Ltd (GRL).
                  2011 Heng Li <lh3@live.co.uk>
-				 2025 Lifu Song <lifu.song@outlook.com>
+                 2025 Lifu Song <lifu.song@outlook.com>
 
    Permission is hereby granted, free of charge, to any person obtaining
    a copy of this software and associated documentation files (the
