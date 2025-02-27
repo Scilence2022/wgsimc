@@ -151,8 +151,6 @@ the rename to **wgsimc**.
 ## System Requirements
 
 - **Compiler:** GCC 4.1.2 or later
-- **CPU:** AMD Opteron 8350 @ 2.0GHz or equivalent
-- **Memory:** At least 128GB recommended for large-scale simulations
 
 ## Notes
 
