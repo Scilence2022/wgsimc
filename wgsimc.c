@@ -41,7 +41,7 @@
 #include "kseq.h"
 KSEQ_INIT(gzFile, gzread)
 
-#define PACKAGE_VERSION "0.3.1-r13"
+#define PACKAGE_VERSION "based on wgsim 0.3.1-r13"
 
 const uint8_t nst_nt4_table[256] = {
 	4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4, 
@@ -396,18 +396,19 @@ static int simu_usage()
 	fprintf(stderr, "Program: wgsimc (short read simulator for circular/linear genomes)\n");
 	fprintf(stderr, "Version: %s\n", PACKAGE_VERSION);
 	fprintf(stderr, "Contact: Lifu Song <lifu.song@outlook.com>\n\n");
-	fprintf(stderr, "Usage:   wgsimc [options] <in.ref.fa> <out.read1.fq> <out.read2.fq>\n\n");
+	fprintf(stderr, "Usage:   wgsimc [options] <in.ref.fa> <out_prefix>\n\n");
 	fprintf(stderr, "Options: -e FLOAT      base error rate [%.3f]\n", ERR_RATE);
 	fprintf(stderr, "         -d INT        outer distance between the two ends [500]\n");
 	fprintf(stderr, "         -s INT        standard deviation [50]\n");
 	fprintf(stderr, "         -N INT        number of read pairs [1000000]\n");
-	fprintf(stderr, "         -1 INT        length of the first read [70]\n");
-	fprintf(stderr, "         -2 INT        length of the second read [70]\n");
+	fprintf(stderr, "         -1 INT        length of the first read [150]\n");
+	fprintf(stderr, "         -2 INT        length of the second read [150]\n");
 	fprintf(stderr, "         -r FLOAT      rate of mutations [%.4f]\n", MUT_RATE);
 	fprintf(stderr, "         -R FLOAT      fraction of indels [%.2f]\n", INDEL_FRAC);
 	fprintf(stderr, "         -X FLOAT      probability an indel is extended [%.2f]\n", INDEL_EXTEND);
 	fprintf(stderr, "         -S INT        seed for random generator [-1]\n");
 	fprintf(stderr, "         -A FLOAT      discard if fraction of ambiguous bases is higher than FLOAT [%.2f]\n", MAX_N_RATIO);
+	fprintf(stderr, "         -f FLOAT      coverage of read pairs (overrides -N) [100]\n");
 	fprintf(stderr, "         -h            haplotype mode\n");
 	fprintf(stderr, "         -c            circular genome mode\n");
 	fprintf(stderr, "\n");
@@ -420,10 +421,11 @@ int main(int argc, char *argv[])
 	int dist, std_dev, c, size_l, size_r, is_hap = 0, is_circ = 0;
 	FILE *fpout1, *fpout2;
 	int seed = -1;
+	float coverage = -1.0;
 
 	N = 1000000; dist = 500; std_dev = 50;
-	size_l = size_r = 70;
-	while ((c = getopt(argc, argv, "e:d:s:N:1:2:r:R:hX:S:A:c")) >= 0) {
+	size_l = size_r = 150;
+	while ((c = getopt(argc, argv, "e:d:s:N:1:2:r:R:hX:S:A:cf:")) >= 0) {
 		switch (c) {
 		case 'd': dist = atoi(optarg); break;
 		case 's': std_dev = atoi(optarg); break;
@@ -438,11 +440,27 @@ int main(int argc, char *argv[])
 		case 'S': seed = atoi(optarg); break;
 		case 'h': is_hap = 1; break;
 		case 'c': is_circ = 1; break;
+		case 'f': coverage = atof(optarg); break;
 		}
 	}
-	if (argc - optind < 3) return simu_usage();
-	fpout1 = fopen(argv[optind+1], "w");
-	fpout2 = fopen(argv[optind+2], "w");
+	if (argc - optind < 2) return simu_usage();
+
+	if (coverage >= 0) {
+		gzFile fp = gzopen(argv[optind], "r");
+		kseq_t *seq = kseq_init(fp);
+		uint64_t tot_len = 0;
+		while (kseq_read(seq) >= 0) tot_len += seq->seq.l;
+		kseq_destroy(seq);
+		gzclose(fp);
+		N = (uint64_t)((coverage * tot_len) / (size_l + size_r));
+	}
+
+	char *out_prefix = argv[optind+1];
+	char fq1[PATH_MAX], fq2[PATH_MAX];
+	snprintf(fq1, sizeof(fq1), "%s.read1.fq", out_prefix);
+	snprintf(fq2, sizeof(fq2), "%s.read2.fq", out_prefix);
+	fpout1 = fopen(fq1, "w");
+	fpout2 = fopen(fq2, "w");
 	if (!fpout1 || !fpout2) {
 		fprintf(stderr, "[wgsimc] file open error\n");
 		return 1;
@@ -457,3 +475,4 @@ int main(int argc, char *argv[])
 	fclose(fpout1); fclose(fpout2);
 	return 0;
 }
+

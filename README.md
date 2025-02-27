@@ -35,16 +35,30 @@ gcc -g -O2 -Wall -o wgsimc wgsimc.c -lz -lm
 To simulate reads using **wgsimc**, run:
 
 ```bash
-wgsimc [options] <in.fa> <out1.fq> <out2.fq>
+wgsimc [options] <in.ref.fa> <out_prefix>
 ```
+
+The program will output two FASTQ files:
+- `<out_prefix>.read1.fq`: Contains the first reads of each pair
+- `<out_prefix>.read2.fq`: Contains the second reads of each pair
 
 Use the `-c` option to simulate reads from circular genomes, allowing reads to span across the sequence end and beginning.
 
 ### Example for Circular Genome:
 
 ```bash
-wgsimc -c -N1000000 -1 100 -2 100 circular.fa read1.fq read2.fq
+wgsimc -c -N1000000 -1 150 -2 150 circular.fa output_prefix
 ```
+
+### Coverage-based Simulation
+
+You can specify the desired coverage using the `-f` option instead of explicitly setting the number of read pairs:
+
+```bash
+wgsimc -c -f 100 -1 150 -2 150 circular.fa output_prefix
+```
+
+This will generate enough read pairs to achieve approximately 100x coverage of the reference genome.
 
 ## Evaluation
 
@@ -53,12 +67,12 @@ wgsimc -c -N1000000 -1 100 -2 100 circular.fa read1.fq read2.fq
 The command line for simulation:
 
 ```bash
-wgsimc [-c] -N <number_of_reads> -1 <read_length> -d0 -S11 -e0 -r <error_rate> reference.fa output1.fq output2.fq
+wgsimc [-c] -f <coverage> -1 <read_length> -d0 -S11 -e0 -r <error_rate> reference.fa output_prefix
 ```
 
-- Replace `<number_of_reads>` with the desired number of reads.
-- Replace `<read_length>` with the length of the reads.
-- Replace `<error_rate>` with the desired error rate.
+- Replace `<coverage>` with the desired coverage (or use `-N <number_of_reads>` for exact read count)
+- Replace `<read_length>` with the length of the reads (default is 150)
+- Replace `<error_rate>` with the desired error rate
 
 By default, 15% of polymorphisms are INDELs, and their lengths are drawn from a
 geometric distribution with density \( 0.7 \times 0.3^{l-1} \).
@@ -83,14 +97,33 @@ plasmids, mitochondrial DNA), use the `-c` option. In this mode:
 ### Example for Circular Genome:
 
 ```bash
-wgsimc -c -N1000000 -1 100 -2 100 circular.fa read1.fq read2.fq
+wgsimc -c -f 50 circular.fa output_prefix
 ```
+
+This will generate paired-end reads with default 150bp length and approximately 50x coverage.
+
+## Options Summary
+
+- `-e FLOAT`: Base error rate [0.020]
+- `-d INT`: Outer distance between the two ends [500]
+- `-s INT`: Standard deviation [50]
+- `-N INT`: Number of read pairs [1000000]
+- `-1 INT`: Length of the first read [150]
+- `-2 INT`: Length of the second read [150]
+- `-r FLOAT`: Rate of mutations [0.0010]
+- `-R FLOAT`: Fraction of indels [0.15]
+- `-X FLOAT`: Probability an indel is extended [0.30]
+- `-S INT`: Seed for random generator [-1]
+- `-A FLOAT`: Discard if fraction of ambiguous bases is higher than FLOAT [0.05]
+- `-f FLOAT`: Coverage of read pairs (overrides -N) [100]
+- `-h`: Haplotype mode
+- `-c`: Circular genome mode
 
 ## Makefile
 
 A `Makefile` is provided for easy compilation. Run `make` in the terminal to compile **wgsimc**.
 
-```Makefile:Makefile
+```Makefile
 CC = gcc
 CFLAGS = -g -O2 -Wall
 LDFLAGS = -lz -lm
